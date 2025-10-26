@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+#
+set -u -e -o pipefail
+
+case "$*" in
+  "-h"|"--help"|"help")
+    echo "__ build"
+    ;;
+
+  build)
+    set -x
+    go build -o bin/template.go ./cli
+    ;;
+
+  # =============================================================================
+  # =============================================================================
+  *)
+    echo "!!! Unknown command: $*" >&2
+    exit 1
+    ;;
+esac
