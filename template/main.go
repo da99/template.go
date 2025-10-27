@@ -8,19 +8,19 @@ import (
 	"html/template"
 	"os"
 	"strings"
-	"errors"
+	// "errors"
 	"encoding/json"
-	"sync"
+	// "sync"
 	"github.com/da99/files.go/files"
 )
 
 const PARTIAL_PATTERN = ".partial.go.html"
 type FileHandler func(string) error
 
-func GetConfigBytes(files ...string) ([]byte, error) {
-	file_path := files.First(files)
+func GetConfigBytes(raw_files ...string) ([]byte, error) {
+	file_path := files.First(raw_files...)
 	if file_path == "" {
-		return nil, errors.New("Config file not found.")
+		return nil, nil
 	}
 	contents, read_err := os.ReadFile(file_path)
 	if read_err != nil { return nil, read_err }
@@ -35,7 +35,9 @@ func GetConfig() (map[string]interface{}, error) {
 		return fin, config_err
 	}
 
-	j_err := json.Unmarshal([]byte(contents), &fin)
+	if contents == nil { return fin, nil }
+
+	j_err := json.Unmarshal(contents, &fin)
 	if j_err != nil {
 		return fin, j_err
 	}
@@ -54,15 +56,18 @@ func CompileFile(fp string) error {
 }
 
 
-// compileCmd represents the compile command
-func compile(args []string) error {
-	var wg sync.WaitGroup
-	defer wg.Wait()
+func IsPartial(fp string) bool {
+	return strings.Contains(fp, PARTIAL_PATTERN)
+}
+
+func Compile(str_dir string) error {
+	// var wg sync.WaitGroup
+	// defer wg.Wait()
 
 	config, c_err := GetConfig()
 	if c_err != nil { return c_err }
 
-	dirs, d_err := files.List_Shallow_Dirs(args[0])
+	dirs, d_err := files.List_Shallow_Dirs(str_dir)
 	if d_err != nil { return d_err }
 
 	for _, d := range dirs {
@@ -82,7 +87,6 @@ func compile(args []string) error {
 				os.Exit(1)
 			}
 			fmt.Println("\n")
-
 		}
 	}
 
