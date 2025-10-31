@@ -23,7 +23,7 @@ func must_exist(str_path string) bool {
 	return true
 }
 
-func LS_Files(target string) ([]string, error) {
+func List_Files(target string) ([]string, error) {
 	return filepath.Glob(filepath.Join(target, "/**/*.go.html"))
 }
 
