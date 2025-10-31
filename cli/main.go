@@ -42,7 +42,7 @@ func main() {
 			target = path.Dir(target)
 		}
 
-		cerr := template.CompileDir(target)
+		cerr := template.Compile_Dir(target)
 		exit.PrintError(cerr)
 
 		os.Exit(0)

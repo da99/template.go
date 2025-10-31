@@ -6,13 +6,10 @@ import (
 	"path/filepath"
 	"html/template"
 	"os"
-	"os/exec"
 	"strings"
-	// "errors"
 	"encoding/json"
-	// "sync"
 	"github.com/da99/files.go/files"
-	"github.com/da99/cli.go/exit"
+	"github.com/da99/cli.go/run"
 )
 
 const PARTIAL_PATTERN = ".partial.go.html"
@@ -26,27 +23,21 @@ func must_exist(str_path string) bool {
 	return true
 }
 
-
-func shell_lines(cmd_str string) []string {
-	raw := exec.Command("sh", "-c", cmd_str)
-
-	output, o_err := raw.Output()
-	exit.PrintError(o_err)
-
-	return strings.Split(strings.TrimSpace(string(output)), "\n")
+func LS_Files(target string) ([]string, error) {
+	return filepath.Glob(filepath.Join(target, "/**/*.go.html"))
 }
 
 func List_Template_Files(str_dir string) []string {
 	must_exist(str_dir)
-	return shell_lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | sort")
+	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | sort")
 }
 
 func List_Dirs(str_dir string) []string {
 	must_exist(str_dir)
-	return shell_lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | xargs dirname | sort | uniq")
+	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | xargs dirname | sort | uniq")
 }
 
-func GetConfigBytes(raw_files ...string) ([]byte, error) {
+func Get_Config_Bytes(raw_files ...string) ([]byte, error) {
 	file_path := files.First(raw_files...)
 	if file_path == "" {
 		return nil, nil
@@ -56,14 +47,14 @@ func GetConfigBytes(raw_files ...string) ([]byte, error) {
 	return contents, nil
 }
 
-func FileHTML(raw_path string) string {
+func RemoveDotGo(raw_path string) string {
 	return strings.Replace(raw_path, ".go.html", ".html", 1)
 }
 
-func GetConfig() (map[string]interface{}, error) {
+func Get_Config() (map[string]interface{}, error) {
 	fin := make(map[string]interface{})
 
-	contents, config_err := GetConfigBytes("config.json", "config/main.json")
+	contents, config_err := Get_Config_Bytes("config.json", "config/main.json")
 	if config_err != nil {
 		return fin, config_err
 	}
@@ -78,7 +69,7 @@ func GetConfig() (map[string]interface{}, error) {
 	return fin, nil
 }
 
-func CompileFile(fp string) error {
+func Compile_File(fp string) error {
 	fmt.Println("Compiling: " + fp)
 	tmpl, err := template.ParseFiles(fp)
 	if err != nil {
@@ -89,15 +80,15 @@ func CompileFile(fp string) error {
 }
 
 
-func IsPartial(fp string) bool {
+func Is_Partial(fp string) bool {
 	return strings.Contains(fp, PARTIAL_PATTERN)
 }
 
-func CompileDir(str_dir string) error {
+func Compile_Dir(str_dir string) error {
 	// var wg sync.WaitGroup
 	// defer wg.Wait()
 
-	config, c_err := GetConfig()
+	config, c_err := Get_Config()
 	if c_err != nil { return c_err }
 
 	all_dirs := List_Dirs(str_dir)
@@ -110,10 +101,10 @@ func CompileDir(str_dir string) error {
 		if t_err != nil { return err }
 
 		for _, f := range all_files {
-			if IsPartial(f) { continue; }
+			if Is_Partial(f) { continue; }
 
 			fmt.Printf("-- Compiling template: %v\n", f)
-			new_file_path := FileHTML(f)
+			new_file_path := RemoveDotGo(f)
 			filer, ferr := os.Create(new_file_path)
 			if ferr != nil {
 				filer.Close()
@@ -135,23 +126,4 @@ func CompileDir(str_dir string) error {
 	return nil
 }
 
-func print_it(str string) error {
-	_, err := fmt.Printf("File: %v\n", str)
-	return err
-}
 
-func each_line(matches []string, fh FileHandler) error {
-	for _, v := range matches {
-		err := fh(v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-
-
-func LsFiles(target string) ([]string, error) {
-	return filepath.Glob(filepath.Join(target, "/**/*.go.html"))
-}
