@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"github.com/da99/files.go/files"
 	"github.com/da99/cli.go/args"
+	"github.com/da99/cli.go/files"
 )
 
 func main() {

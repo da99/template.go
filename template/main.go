@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 	"encoding/json"
-	"github.com/da99/files.go/files"
+	"github.com/da99/cli.go/files"
 	"github.com/da99/cli.go/run"
 )
 
