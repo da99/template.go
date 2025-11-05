@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"html/template"
+	go_template "html/template"
 	"os"
 	"strings"
 	"encoding/json"
@@ -14,6 +14,11 @@ import (
 
 const PARTIAL_PATTERN = ".partial.go.html"
 type FileHandler func(string) error
+
+func List_Partials_And_Layouts(dir string) []string {
+	must_exist(dir)
+	return run.Lines("find \"" + dir+ "\" -type f -name '*.partial.go.html' -or -name '*.layout.go.html' | sort")
+}
 
 func must_exist(str_path string) bool {
 	if !files.Is(str_path) {
@@ -27,14 +32,19 @@ func List_Files(target string) ([]string, error) {
 	return filepath.Glob(filepath.Join(target, "/**/*.go.html"))
 }
 
+func List_All(str_dir string) []string {
+	must_exist(str_dir)
+	return run.Lines("find \"" + str_dir + "\" -type f -name '*.go.html' | sort")
+}
+
 func List_Template_Files(str_dir string) []string {
 	must_exist(str_dir)
-	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | sort")
+	return run.Lines("find \"" + str_dir + "\" -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | sort")
 }
 
 func List_Dirs(str_dir string) []string {
 	must_exist(str_dir)
-	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' | xargs dirname | sort | uniq")
+	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | xargs dirname | sort | uniq")
 }
 
 func Get_Config_Bytes(raw_files ...string) ([]byte, error) {
@@ -71,7 +81,7 @@ func Get_Config() (map[string]interface{}, error) {
 
 func Compile_File(fp string) error {
 	fmt.Println("Compiling: " + fp)
-	tmpl, err := template.ParseFiles(fp)
+	tmpl, err := go_template.ParseFiles(fp)
 	if err != nil {
 		fmt.Println("errorr")
 		return err
@@ -97,7 +107,7 @@ func Compile_Dir(str_dir string) error {
 		all_files, err := files.List_Shallow_Files_Ext(d, "*.go.html")
 		if err != nil { return err }
 
-		tmpl, t_err := template.ParseFiles(all_files...)
+		tmpl, t_err := go_template.ParseFiles(all_files...)
 		if t_err != nil { return err }
 
 		for _, f := range all_files {
