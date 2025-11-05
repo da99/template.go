@@ -9,6 +9,7 @@ import (
 	"strings"
 	"encoding/json"
 	"github.com/da99/cli.go/files"
+	"github.com/da99/cli.go/exit"
 	"github.com/da99/cli.go/run"
 )
 
@@ -28,8 +29,12 @@ func must_exist(str_path string) bool {
 	return true
 }
 
-func List_Files(target string) ([]string, error) {
-	return filepath.Glob(filepath.Join(target, "/**/*.go.html"))
+func List_Files(target string) []string {
+	results, err := filepath.Glob(filepath.Join(target, "/**/*.go.html"))
+	if err != nil {
+		exit.PrintError(err)
+	}
+	return results
 }
 
 func List_All(str_dir string) []string {
@@ -104,11 +109,10 @@ func Compile_Dir(str_dir string) error {
 	all_dirs := List_Dirs(str_dir)
 
 	for _, d := range all_dirs {
-		all_files, err := files.List_Shallow_Files_Ext(d, "*.go.html")
-		if err != nil { return err }
+		all_files := files.List_Shallow_Files_Ext(d, "*.go.html")
 
 		tmpl, t_err := go_template.ParseFiles(all_files...)
-		if t_err != nil { return err }
+		if t_err != nil { return t_err }
 
 		for _, f := range all_files {
 			if Is_Partial(f) { continue; }
