@@ -62,7 +62,7 @@ func Get_Config_Bytes(raw_files ...string) ([]byte, error) {
 	return contents, nil
 }
 
-func RemoveDotGo(raw_path string) string {
+func Remove_Dot_Go(raw_path string) string {
 	return strings.Replace(raw_path, ".go.html", ".html", 1)
 }
 
@@ -118,7 +118,7 @@ func Compile_Dir(str_dir string) error {
 			if Is_Partial(f) { continue; }
 
 			fmt.Printf("-- Compiling template: %v\n", f)
-			new_file_path := RemoveDotGo(f)
+			new_file_path := Remove_Dot_Go(f)
 			filer, ferr := os.Create(new_file_path)
 			if ferr != nil {
 				filer.Close()
