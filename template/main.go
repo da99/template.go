@@ -18,7 +18,7 @@ type FileHandler func(string) error
 
 func List_Partials_And_Layouts(dir string) []string {
 	must_exist(dir)
-	return run.Lines("find \"" + dir+ "\" -type f -name '*.partial.go.html' -or -name '*.layout.go.html' | sort")
+	return run.One_Line_Script("find \"" + dir+ "\" -type f -name '*.partial.go.html' -or -name '*.layout.go.html' | sort")
 }
 
 func must_exist(str_path string) bool {
@@ -39,17 +39,17 @@ func List_Files(target string) []string {
 
 func List_All(str_dir string) []string {
 	must_exist(str_dir)
-	return run.Lines("find \"" + str_dir + "\" -type f -name '*.go.html' | sort")
+	return run.One_Line_Script("find \"" + str_dir + "\" -type f -name '*.go.html' | sort")
 }
 
 func List_Template_Files(str_dir string) []string {
 	must_exist(str_dir)
-	return run.Lines("find \"" + str_dir + "\" -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | sort")
+	return run.One_Line_Script("find \"" + str_dir + "\" -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | sort")
 }
 
 func List_Dirs(str_dir string) []string {
 	must_exist(str_dir)
-	return run.Lines("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | xargs dirname | sort | uniq")
+	return run.One_Line_Script("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | xargs dirname | sort | uniq")
 }
 
 func Get_Config_Bytes(raw_files ...string) ([]byte, error) {
