@@ -2,142 +2,85 @@ package template
 
 import (
 	"fmt"
-	"path"
-	"path/filepath"
-	go_template "html/template"
-	"os"
-	"strings"
-	"encoding/json"
-	"github.com/da99/cli.go/files"
-	"github.com/da99/cli.go/exit"
+
 	"github.com/da99/cli.go/run"
+	"github.com/da99/cli.go/exit"
+	"github.com/da99/cli.go/config"
+	"os"
+	// "path/filepath"
+	go_template "html/template"
+	"strings"
 )
 
-const PARTIAL_PATTERN = ".partial.go.html"
-type FileHandler func(string) error
-
-func List_Partials_And_Layouts(dir string) []string {
-	must_exist(dir)
-	return run.One_Line_Script("find \"" + dir+ "\" -type f -name '*.partial.go.html' -or -name '*.layout.go.html' | sort")
-}
-
-func must_exist(str_path string) bool {
-	if !files.Is(str_path) {
-		fmt.Fprintf(os.Stderr, "Does not exist: %v\n", str_path)
-		os.Exit(1)
-	}
-	return true
-}
-
-func List_Files(target string) []string {
-	results, err := filepath.Glob(filepath.Join(target, "/**/*.go.html"))
-	if err != nil {
-		exit.PrintError(err)
-	}
-	return results
-}
-
-func List_All(str_dir string) []string {
-	must_exist(str_dir)
-	return run.One_Line_Script("find \"" + str_dir + "\" -type f -name '*.go.html' | sort")
-}
-
-func List_Template_Files(str_dir string) []string {
-	must_exist(str_dir)
-	return run.One_Line_Script("find \"" + str_dir + "\" -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | sort")
-}
-
-func List_Dirs(str_dir string) []string {
-	must_exist(str_dir)
-	return run.One_Line_Script("find " + str_dir + " -type f -name '*.go.html' -and -not -name '*.partial.go.html' -and -not -name '*.layout.go.html' | xargs dirname | sort | uniq")
-}
-
-func Get_Config_Bytes(raw_files ...string) ([]byte, error) {
-	file_path := files.First(raw_files...)
-	if file_path == "" {
-		return nil, nil
-	}
-	contents, read_err := os.ReadFile(file_path)
-	if read_err != nil { return nil, read_err }
-	return contents, nil
-}
+const DOT_PARTIAL = ".partial.go.html"
+const DOT_LAYOUT  = ".layout.go.html"
 
 func Remove_Dot_Go(raw_path string) string {
 	return strings.Replace(raw_path, ".go.html", ".html", 1)
 }
 
-func Get_Config() (map[string]interface{}, error) {
-	fin := make(map[string]interface{})
-
-	contents, config_err := Get_Config_Bytes("config.json", "config/main.json")
-	if config_err != nil {
-		return fin, config_err
-	}
-
-	if contents == nil { return fin, nil }
-
-	j_err := json.Unmarshal(contents, &fin)
-	if j_err != nil {
-		return fin, j_err
-	}
-
-	return fin, nil
+func Is_Partial(str_path string) bool {
+	return strings.LastIndex(str_path, DOT_PARTIAL) > 1
 }
 
-func Compile_File(fp string) error {
-	fmt.Println("Compiling: " + fp)
-	tmpl, err := go_template.ParseFiles(fp)
-	if err != nil {
-		fmt.Println("errorr")
-		return err
-	}
-	return tmpl.Execute(os.Stdout, "http://www.lewrockwell.com/>a?")
+func Is_Layout(str_path string) bool {
+	return strings.Contains(str_path, "/layout/") ||
+	strings.Contains(str_path, "/layouts/") ||
+	strings.LastIndex(str_path, DOT_LAYOUT) > 1
 }
 
-
-func Is_Partial(fp string) bool {
-	return strings.Contains(fp, PARTIAL_PATTERN)
+func List_Templates_In_Dir(dir string) []string {
+	s_args := fmt.Sprintf("-mindepth 1 -maxdepth 1 -type f -name *.go.html -and -not -name *%s -and -not -name *%s", DOT_PARTIAL, DOT_LAYOUT)
+	args := strings.Fields(s_args)
+	return run.Cmd_Args("find", append([]string{dir}, args...)...)
 }
 
-func Compile_Dir(str_dir string) error {
-	// var wg sync.WaitGroup
-	// defer wg.Wait()
+func List_Template_Dirs(dir string) []string {
+	return run.One_Line_Script(
+		"find " + dir +
+		"  -maxdepth 2 -mindepth 2 " +
+		"  -type f -name '*.go.html' " +
+		"  -and -not -name '*.partial.go.html' " +
+		"  -and -not -path '*/layouts/*' " +
+		"  -and -not -path '*/layout/*' | xargs dirname | sort -u")
+}
 
-	config, c_err := Get_Config()
-	if c_err != nil { return c_err }
+func List_Layouts(dir string) []string {
+	return run.One_Line_Script(`find ` +  dir + ` -maxdepth 2 -mindepth 2 -type f -path '*/layouts/*.go.html'`)
+}
 
-	all_dirs := List_Dirs(str_dir)
+func List_Related_Files(dir string) []string {
+	layouts := List_Layouts(dir)
+	dir_files := run.Cmd_Args("find", dir, "-type", "f", "-name", "*.partial.go.html", "-or", "-name", "*.layout.go.html")
+	return append(layouts, dir_files...)
+}
 
-	for _, d := range all_dirs {
-		all_files := files.List_Shallow_Files_Ext(d, "*.go.html")
+func Compile_Template(config_json map[string]interface{}, related_files []string, f string) error {
+	fmt.Printf("Template: %v\n", f)
+	fmt.Printf("New File: %v\n", Remove_Dot_Go(f))
 
-		tmpl, t_err := go_template.ParseFiles(all_files...)
-		if t_err != nil { return t_err }
+	t, err := go_template.ParseFiles(append([]string{f}, related_files...)...)
+	if err != nil { exit.PrintError(err) }
 
-		for _, f := range all_files {
-			if Is_Partial(f) { continue; }
+	new_file, c_err  := os.Create(Remove_Dot_Go(f))
+	if c_err != nil { exit.PrintError(c_err) }
+	defer new_file.Close()
 
-			fmt.Printf("-- Compiling template: %v\n", f)
-			new_file_path := Remove_Dot_Go(f)
-			filer, ferr := os.Create(new_file_path)
-			if ferr != nil {
-				filer.Close()
-				return ferr
-			}
+	return t.Execute(new_file, config_json)
+}
 
-			err := tmpl.ExecuteTemplate(filer, path.Base(f), config)
-			filer.Close()
+func Compile_All(dir string) {
+	config_json, err := config.Get_Config()
+	exit.PrintError(err)
 
-			if err != nil {
-				fmt.Printf("%v\n", err)
-				os.Exit(1)
-			}
-
-			fmt.Println("Wrote: " + new_file_path)
+	for i, d := range List_Template_Dirs(dir) {
+		fmt.Printf("%v - %v\n", i, d)
+		related_files := List_Related_Files(d)
+		for _, f := range List_Templates_In_Dir(d) {
+			ct_err := Compile_Template(config_json, related_files, f)
+			exit.PrintError(ct_err)
 		}
 	}
-
-	return nil
 }
 
 
