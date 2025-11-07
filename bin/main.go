@@ -3,7 +3,7 @@ package main
 
 import (
 	"fmt"
-	// "github.com/da99/cli.go/args"
+	"github.com/da99/cli.go/args"
 	// "github.com/da99/cli.go/files"
 	"github.com/da99/template.go/template"
 )
@@ -17,7 +17,8 @@ func main() {
 	}
 
 	if args.IsMatch("compile", 1) {
-		template.Compile_All("public/section")
+		dir := args.CAPTURE[0]
+		template.Compile_All(dir)
 		return
 	}
 
