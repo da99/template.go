@@ -6,10 +6,12 @@ import (
 	"github.com/da99/cli.go/run"
 	"github.com/da99/cli.go/exit"
 	"github.com/da99/cli.go/config"
+	"github.com/da99/cli.go/files"
 	"os"
-	// "path/filepath"
+	"path/filepath"
 	go_template "html/template"
 	"strings"
+	"slices"
 )
 
 const DOT_PARTIAL = ".partial.go.html"
@@ -35,14 +37,21 @@ func List_Templates_In_Dir(dir string) []string {
 	return run.Cmd_Args("find", append([]string{dir}, args...)...)
 }
 
-func List_Template_Dirs(dir string) []string {
-	return run.One_Line_Script(
-		"find " + dir +
-		"  -maxdepth 2 -mindepth 2 " +
-		"  -type f -name '*.go.html' " +
-		"  -and -not -name '*.partial.go.html' " +
-		"  -and -not -path '*/layouts/*' " +
-		"  -and -not -path '*/layout/*' | xargs dirname | sort -u")
+func List_Template_Dirs(dir string, raw_exclude ...string) []string {
+	raw_dirs := run.One_Line_Script("find " + dir + "  -maxdepth 2 -mindepth 2 -type f -name '*.go.html' | xargs dirname | sort -u")
+
+	excludes := files.Clean_Paths(raw_exclude...)
+
+	var dirs []string
+
+	for _, d := range raw_dirs {
+		if slices.Contains(excludes, filepath.Clean(d)) {
+			continue
+		}
+		dirs = append(dirs, d)
+	}
+
+	return dirs
 }
 
 func List_All_Dot_Go(dir string) []string {
