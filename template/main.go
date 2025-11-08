@@ -21,6 +21,10 @@ func Remove_Dot_Go(raw_path string) string {
 	return strings.Replace(raw_path, ".go.html", ".html", 1)
 }
 
+func Remove_Dot_Go_HTML(raw_path string) string {
+	return strings.Replace(raw_path, ".go.html", "", 1)
+}
+
 func Is_Partial(str_path string) bool {
 	return strings.LastIndex(str_path, DOT_PARTIAL) > 1
 }
@@ -79,6 +83,8 @@ func Compile_Template(config_json map[string]interface{}, related_files []string
 	if c_err != nil { exit.PrintError(c_err) }
 	defer new_file.Close()
 
+	config_json["SECTION_NAME"] = filepath.Base(filepath.Dir(f))
+	config_json["SECTION_FILE"] = Remove_Dot_Go_HTML(filepath.Base(f))
 	return t.Execute(new_file, config_json)
 }
 
@@ -86,7 +92,7 @@ func Compile_All(config_file string, dir string, related_dirs ...string) {
 	config_json, err := config.Get_Config(config_file)
 	exit.Print_Msg(err, "Config could not be retrieved.")
 
-	for i, d := range List_Template_Dirs(dir) {
+	for i, d := range List_Template_Dirs(dir, related_dirs...) {
 		fmt.Printf("%v - %v\n", i, d)
 		related_files := List_Related_Files(d, related_dirs...)
 		for _, f := range List_Templates_In_Dir(d) {
