@@ -72,7 +72,7 @@ func List_Related_Files(dir string, layouts_partials ...string) []string {
 	return append(related, dir_files...)
 }
 
-func Compile_Template(config_json map[string]interface{}, related_files []string, f string) error {
+func Compile_Template(config_json map[string]interface{}, public_dir string, related_files []string, f string) error {
 	fmt.Printf("Template: %v\n", f)
 	fmt.Printf("New File: %v\n", Remove_Dot_Go(f))
 
@@ -84,11 +84,23 @@ func Compile_Template(config_json map[string]interface{}, related_files []string
 	defer new_file.Close()
 
 	config_json["SECTION_NAME"] = filepath.Base(filepath.Dir(f))
-	config_json["SECTION_FILE"] = Remove_Dot_Go_HTML(filepath.Base(f))
+	config_json["SECTION_FILE_NAME"] = Remove_Dot_Go_HTML(filepath.Base(f))
+	config_json["SECTION_PATH"] = Remove_Dot_Go_HTML(strings.TrimPrefix(absolute(f), public_dir))
+
 	return t.Execute(new_file, config_json)
 }
 
-func Compile_All(config_file string, dir string, related_dirs ...string) {
+func absolute(raw string) string {
+	fin, err := filepath.Abs(raw)
+	if err != nil {
+		fmt.Println("Could not get Absolute path for: ", raw)
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return fin
+}
+
+func Compile_All(config_file string, public_dir string, dir string, related_dirs ...string) {
 	config_json, err := config.Get_Config(config_file)
 	exit.Print_Msg(err, "Config could not be retrieved.")
 
@@ -96,7 +108,7 @@ func Compile_All(config_file string, dir string, related_dirs ...string) {
 		fmt.Printf("%v - %v\n", i, d)
 		related_files := List_Related_Files(d, related_dirs...)
 		for _, f := range List_Templates_In_Dir(d) {
-			ct_err := Compile_Template(config_json, related_files, f)
+			ct_err := Compile_Template(config_json, absolute(public_dir), related_files, f)
 			exit.PrintError(ct_err)
 		}
 	}
